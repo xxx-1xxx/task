@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================
+  zjtec-admin · Root 上下文配置（P3 版）
+  ============================================================
+  管辖范围：**业务层与持久层**（Service、DAO/Mapper、数据源）
+  对应容器：Tomcat 启动时由 ContextLoaderListener 创建的父容器
+  谁加载它：web.xml 里的 <context-param>contextConfigLocation</context-param>
+
+  【本文件在 P3~P6 的演化】
+    P3（现在）：只扫 Service 包 —— 让 Controller 能 @Autowired 到 UserService
+    P4        ：新增 MyBatis 依赖，MyBatis 先用 mybatis-config.xml 独立跑通
+    P5        ：把数据源与 SqlSessionFactory **交给 Spring 管**（整合的核心动作）
+                 在下方「P5 扩展区」补 3 个 bean，并删掉 mybatis-config.xml 的 <environments>
+    P6        ：无需改动
+  ============================================================
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans
+       https://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       https://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!-- ① 组件扫描：只扫业务层（Service 接口的实现类）
+         这样 @Service 标注的 UserServiceImpl 才会被注册成 Bean，
+         Controller 里的 @Autowired UserService 才装配得上。 -->
+    <context:component-scan base-package="com.zjtec.admin.service"/>
+
+    <!-- ============================================================
+         【P5 扩展区】SSM 整合时，在这里补三样东西：
+
+         ② 数据源（读 jdbc.properties，密码不写死在 XML 里）
+         <context:property-placeholder location="classpath:jdbc.properties"/>
+         <bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+             <property name="driverClassName" value="${jdbc.driver}"/>
+             <property name="url"             value="${jdbc.url}"/>
+             <property name="username"        value="${jdbc.username}"/>
+             <property name="password"        value="${jdbc.password}"/>
+         </bean>
+
+         ③ SqlSessionFactory：交给 Spring 管（而不是 MyBatis 自己建）
+         <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+             <property name="dataSource" ref="dataSource"/>
+             <property name="mapperLocations" value="classpath:mapper/*.xml"/>
+             <property name="typeAliasesPackage" value="com.zjtec.admin.entity"/>
+         </bean>
+
+         ④ Mapper 扫描：自动为 Mapper 接口生成代理对象，Service 里直接 @Autowired
+         <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+             <property name="basePackage" value="com.zjtec.admin.mapper"/>
+         </bean>
+
+         做完这三步，同时把 mybatis-config.xml 里的 <environments> 段删掉：
+         数据源的"产权"从 MyBatis 移交给 Spring，只能有一个主人。
+         ============================================================ -->
+
+</beans>

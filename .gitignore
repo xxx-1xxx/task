@@ -1,0 +1,21 @@
+# ---------- 构建产物 ----------
+target/
+*.war
+*.class
+
+# ---------- 日志 ----------
+*.log
+logs/
+
+# ---------- IntelliJ IDEA ----------
+# 之所以先忽略 .idea/ 再放行 runConfigurations/：
+# 运行配置是打算随工程发给学生的（打开即能下拉选择），属于工程的一部分；
+# 而 workspace.xml / 本地 SDK 路径这些是每个人机器独有的，不该进版本库。
+.idea/*
+!.idea/runConfigurations/
+*.iml
+
+# ---------- 操作系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini

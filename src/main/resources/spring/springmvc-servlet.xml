@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================
+  zjtec-admin · SpringMVC 容器配置（P3 版）
+  ============================================================
+  管辖范围：只负责 **Web 层**（Controller、视图解析、静态资源）
+  对应容器：DispatcherServlet 创建的子容器
+  谁加载它：web.xml 里 dispatcherServlet 的 contextConfigLocation
+
+  【与 Root 容器的分工】
+    applicationContext.xml → Service / DAO（业务与持久层）
+    springmvc-servlet.xml  → Controller / 视图（Web 层）
+  两个文件的 component-scan 范围**刻意不重叠**，各扫各的包。
+  ============================================================
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans
+       https://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       https://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/mvc
+       https://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+    <!-- ① 组件扫描：只扫 Web 层（com.zjtec.admin.web 包及其子包）
+         扫描范围写太大（比如 base-package="com.zjtec.admin"）会出现
+         Service 被两个容器各建一份的隐患 —— 这是常见坑，见 docs/03。 -->
+    <context:component-scan base-package="com.zjtec.admin.web"/>
+
+    <!-- ② 注解驱动：让 @RequestMapping / @RequestParam / @ResponseBody 生效 -->
+    <mvc:annotation-driven/>
+
+    <!-- ③ 静态资源（css/js/图片）交给容器默认 Servlet 处理
+         没有这一行，/static/css/app.css 会被 DispatcherServlet 当成 Controller 请求 → 404 -->
+    <mvc:default-servlet-handler/>
+
+    <!-- ④ 视图解析器：Controller 返回 "result"
+             → 拼成 /WEB-INF/jsp/result.jsp 转发过去
+         注意前缀是 /WEB-INF/ —— 这个目录浏览器**无法直接访问**，
+         页面只能经 Controller 转发，起到"视图不外露"的隔离作用。 -->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/WEB-INF/jsp/"/>
+        <property name="suffix" value=".jsp"/>
+    </bean>
+
+</beans>

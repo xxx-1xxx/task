@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================
+  zjtec-admin · Web 应用部署描述符（P3 版）
+  ============================================================
+  这个文件回答一个问题：Tomcat 启动时，先加载什么、再加载什么？
+  顺序（从上到下）就是加载顺序：
+     ① 编码过滤器   → 解决 POST 提交中文乱码
+     ② 启动自检监听 → 把环境信息打到日志（可诊断性）
+     ③ Root 上下文  → 加载 applicationContext.xml（管 Service、DAO）
+     ④ SpringMVC    → 加载 springmvc-servlet.xml（管 Controller、视图）
+     ⑤ 欢迎页       → 访问 http://localhost:8080/zjtec-admin/ 时的默认页
+  ============================================================
+-->
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+         https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+         version="5.0">
+
+    <display-name>zjtec-admin</display-name>
+
+    <!-- ① 编码过滤器：POST 提交的中文不乱码 -->
+    <filter>
+        <filter-name>encodingFilter</filter-name>
+        <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>UTF-8</param-value>
+        </init-param>
+        <init-param>
+            <param-name>forceEncoding</param-name>
+            <param-value>true</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>encodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!-- ② 启动自检：每次启动在日志里打印一行"体检报告"，出问题先看它 -->
+    <listener>
+        <listener-class>com.zjtec.admin.config.StartupSelfCheckListener</listener-class>
+    </listener>
+
+    <!-- ③ Root 上下文（父容器）：加载 applicationContext.xml，负责 Service 层
+         为什么 Web 工程要两个容器？
+           Root 容器 = 业务/持久层，Tomcat 启动时就建好，整个应用只有一份
+           MVC 容器  = Web 层，由 DispatcherServlet 创建，是 Root 的子容器
+         子容器能拿到父容器的 Bean（Controller 才能 @Autowired 到 Service），反之不行。
+         【P5 整合时】只需往 applicationContext.xml 里加数据源和 MyBatis 三件套，
+         这个文件本身一行都不用改。 -->
+    <context-param>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>classpath:spring/applicationContext.xml</param-value>
+    </context-param>
+    <listener>
+        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+    </listener>
+
+    <!-- ④ SpringMVC 前端控制器：所有请求先经它，再分发到 Controller -->
+    <servlet>
+        <servlet-name>dispatcherServlet</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:spring/springmvc-servlet.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>dispatcherServlet</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+
+    <!-- ⑤ 欢迎页 -->
+    <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+
+</web-app>

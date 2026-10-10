@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================
+  zjtec-admin · 日志配置（Logback）
+  ============================================================
+  为什么实验工程要配日志？
+    只靠 System.out.println，出问题只能看 Tomcat 控制台那一屏白字，
+    刷过去就没了；而且分不清是"框架在说话"还是"我的代码在说话"。
+    配了日志以后：按级别过滤、按包定位、自动落文件可回查。
+
+  【日志级别】由低到高：TRACE < DEBUG < INFO < WARN < ERROR
+    级别设成 INFO → 只输出 INFO 及以上；设成 DEBUG → DEBUG 及以上都输出。
+  【课堂上怎么用】
+    临时把某个包调成 DEBUG 观察细节，比如：
+      <logger name="org.springframework.web" level="DEBUG"/>  → 看请求怎么被映射
+    这就是排查"404 到底是谁吃了请求"的最快手段。
+
+  日志文件位置：Tomcat 的 logs/zjtec-admin.log（独立于 catalina.out，好找）
+  ============================================================
+-->
+<configuration>
+
+    <property name="LOG_DIR" value="${catalina.base:-.}/logs"/>
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{40} - %msg%n"/>
+
+    <!-- 控制台输出（IDEA / Tomcat 控制台可见） -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 文件输出：按天滚动，保留 7 天 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/zjtec-admin.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/zjtec-admin.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 本项目代码：DEBUG（课堂上能看到自己写的日志） -->
+    <logger name="com.zjtec.admin" level="DEBUG"/>
+
+    <!-- 第三方框架：INFO（想看容器启动细节时可临时改 DEBUG） -->
+    <logger name="org.springframework" level="INFO"/>
+    <logger name="org.mybatis" level="INFO"/>
+    <logger name="com.zaxxer.hikari" level="INFO"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+</configuration>

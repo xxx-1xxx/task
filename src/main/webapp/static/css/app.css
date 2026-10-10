@@ -1,0 +1,229 @@
+/*
+ * ============================================================
+ * zjtec-admin · 极简样式表
+ * ============================================================
+ * 为什么要放静态资源、还配了 springmvc-servlet.xml 的 default-servlet-handler？
+ *   因为这是学生必踩的坑：把 css 放到 /WEB-INF/ 下 → 浏览器取不到（404）。
+ *   /WEB-INF/ 是"视图专用"目录，静态资源必须放在能直接被容器访问的路径下。
+ *
+ * 主色 #1F4E79 与课程课件的"科技蓝"一致，页面和 PPT 视觉统一。
+ * ============================================================
+ */
+
+:root {
+    --primary: #1F4E79;
+    --primary-light: #E8F0F8;
+    --text: #2C2C2A;
+    --text-muted: #6B6B68;
+    --border: #DDE3EA;
+    --ok: #0F6E56;
+    --bad: #A32D2D;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 48px 16px;
+    font-family: "Microsoft YaHei", "微软雅黑", -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    background: #F7F9FB;
+}
+
+.card {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 32px 36px 28px;
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+h1 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--primary);
+}
+
+.sub {
+    margin: 0 0 24px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+code {
+    padding: 1px 5px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 13px;
+    background: var(--primary-light);
+    border-radius: 4px;
+    color: var(--primary);
+}
+
+/* ---------- 表单 ---------- */
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.form input {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    outline: none;
+}
+
+.form input:focus {
+    border-color: var(--primary);
+}
+
+button {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #FFFFFF;
+    background: var(--primary);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+.btn-secondary {
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+/* ---------- 首页链接 ---------- */
+
+.btn {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 14px;
+    color: #FFFFFF;
+    background: var(--primary);
+    border-radius: 6px;
+    text-decoration: none;
+}
+
+/* ---------- 里程碑列表 ---------- */
+
+.milestones {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 14px;
+}
+
+.milestones li {
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--border);
+    color: var(--text-muted);
+}
+
+.milestones li.done {
+    color: var(--text);
+}
+
+.milestones b {
+    display: inline-block;
+    width: 34px;
+    font-weight: 500;
+    color: var(--primary);
+}
+
+.tag {
+    margin-left: 6px;
+    padding: 1px 8px;
+    font-size: 12px;
+    color: #FFFFFF;
+    background: var(--primary);
+    border-radius: 10px;
+}
+
+/* ---------- 结果页 ---------- */
+
+.result {
+    margin: 0 0 22px;
+    padding: 14px 18px;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--primary-light);
+    border-left: 3px solid var(--primary);
+    border-radius: 4px;
+}
+
+.kv {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.kv th,
+.kv td {
+    padding: 9px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+
+.kv th {
+    width: 96px;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+/* ---------- 其他 ---------- */
+
+.divider {
+    position: relative;
+    margin: 24px 0;
+    text-align: center;
+}
+
+.divider::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    border-top: 1px solid var(--border);
+}
+
+.divider span {
+    position: relative;
+    padding: 0 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: #FFFFFF;
+}
+
+.tip {
+    margin: 22px 0 0;
+    padding-top: 16px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+}

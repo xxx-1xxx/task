@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zjtec.admin.mapper.EmployeeMapper">
+
+    <!-- ============================================================
+         resultMap：关联查询的"装配说明书"
+         ============================================================
+         SQL 查出来的是一张"宽表"（员工列 + 部门列混在一起），
+         resultMap 告诉 MyBatis 怎么把这堆列组装成 Employee：
+
+             普通列      → 直接塞进 Employee 的属性
+             部门那几列  → 先 new 一个 Dept 填好，再塞进 employee.dept
+
+         后半句就是 <association> 干的事。没有它，SQL 里那两列部门数据
+         无处可去 —— 这也是"为什么单表查询不需要 resultMap、
+         关联查询必须手写"的根本原因。
+
+         ⚠️ 关于 dept_id 这一列：它同时出现在两处映射里
+            （Employee.deptId 和 Dept.id）。这是允许的，两处独立处理：
+            前者是外键列本身，后者是关联对象的身份。
+         ============================================================ -->
+    <resultMap id="employeeMap" type="Employee">
+        <id     property="id"     column="id"/>
+        <result property="name"   column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="deptId" column="dept_id"/>
+
+        <!-- ============================================================
+             ★ TODO-4a ★  <association>：把部门那两列装配成 Dept 对象
+             ============================================================
+             上面 4 行把「员工自己的列」映射完了；剩下「部门的两列」
+             （dept_id 与 dept_name）无处可去，必须在这里装进 employee.dept。
+
+             要写 2 行映射：
+               · Dept 的 id   ← 来自 SQL 的哪一列？
+               · Dept 的 name ← 来自 SQL 的哪一列？
+
+             ⚠️ 关键陷阱：name 这一列，**必须写 SQL 里的别名 dept_name**，
+                不能写 name —— 员工表也有 name 列，写 name 会把员工姓名
+                串到部门名上（页面看着"有数据"，其实全错）。
+
+             验收：/employees 页面"所属部门"列有值，且与员工对得上。
+             ============================================================ -->
+        <association property="dept" javaType="Dept">
+            <id     property="id"   column="dept_id"/>
+            <result property="name" column="dept_name"/>
+        </association>
+    </resultMap>
+
+    <!-- 公共查询列片段。
+         抽出来是为了让多个 select 共用一份列清单，改一处即可，
+         也避免"某个查询忘了起别名"这种低级错误。 -->
+    <sql id="withDeptColumns">
+        e.id, e.name, e.gender, e.dept_id,
+        d.name AS dept_name
+    </sql>
+
+    <!-- ============================================================
+         查询 1：查全部（关联查询）
+         ============================================================
+         用 LEFT JOIN 而不是 INNER JOIN：没有部门的员工也能列出来，
+         （关联列全为 NULL，resultMap 组装出的 dept 为 null）。
+         若用 INNER JOIN，这类员工会凭空消失 —— 数据"少了几条"却查不出错，
+         是生产中很常见的坑。
+         ============================================================ -->
+    <!-- ============================================================
+         ★ TODO-4b ★  关联查询：findAll
+         ============================================================
+         这条是实验四的核心。要写 4 件事：
+           ① SELECT 段可以直接引用上面抽好的公共列片段：
+                  SELECT <include refid="withDeptColumns"/>
+              （用 <include> 而不是把列抄一遍 —— 抄一遍就容易忘别名）
+           ② 主表 employee 起别名 e
+           ③ LEFT JOIN dept 起别名 d，关联条件是 e.dept_id = d.id
+           ④ ORDER BY e.id（不给 ORDER BY，数据库返回顺序不保证，
+              测试里的"按 id 升序"那条会随机红 —— 它不是玄学，是没排序）
+
+         ⚠️ 用 LEFT JOIN 不要用 INNER JOIN：
+            没有部门的员工也要列出来（否则它会凭空消失，
+            数据"少了几条"却查不出任何错 —— 生产中很常见的坑）。
+
+         验收：TestMyBatis 第 ① 段打印出「张三 → 研发部」这种形式，
+              部门名不是 null。
+         ============================================================ -->
+    <select id="findAll" resultMap="employeeMap">
+        SELECT e.id, e.name, e.gender, d.name AS dept_name
+        FROM employee e
+        LEFT JOIN dept d ON e.dept_id = d.id
+        ORDER BY e.id;
+    </select>
+
+    <!-- ============================================================
+         查询 2：按主键查（单表查询）
+         ============================================================
+         只查 employee 一张表，没有部门列：
+           · 用 resultType 就够（列名与属性名一致，mapUnderscoreToCamelCase 负责驼峰转换）
+           · 返回对象的 dept 属性是 null
+
+         想让它也带部门名，就得写成关联查询 + resultMap —— 这是考核点。
+         ============================================================ -->
+    <!-- ============================================================
+         ★ TODO-2 ★  单表查询：findById
+         ============================================================
+         要素：
+           · 只查 employee 一张表（不 JOIN）——所以用 resultType 就够，
+             不用手写 resultMap；
+           · 要查出的列：id, name, gender, dept_id（dept_id 是外键列，
+             列名带下划线，靠 mybatis-config.xml 里的
+             mapUnderscoreToCamelCase 自动映射到属性 deptId）；
+           · 参数是 #{id}。
+
+         验收：TestMyBatis 的第 ② 段能打印出张三那条记录，
+              且 dept 打印为 null（单表查询装不出关联对象，这是对的）。
+         ============================================================ -->
+    <select id="findById" parameterType="int" resultType="Employee">
+        SELECT id, name, gender, dept_id FROM employee WHERE id = #{id}
+    </select>
+
+    <!-- ============================================================
+         查询 3：按条件查（动态 SQL + 多参数传递）
+         ============================================================
+         <where> 会自动处理"第一个条件前面多出来的 AND"：
+           两个条件都传 → WHERE dept_id = ? AND gender = ?
+           只传性别     → WHERE gender = ?
+           都不传       → 整个 WHERE 不出现
+         若手写 WHERE 1=1 也能实现，但 <where> 更干净、也更标准。
+
+         #{deptId} 里的名字来自接口上的 @Param("deptId")。
+         多参数时**必须**用 @Param 指定名字，否则只能写成 #{param1} /
+         #{arg0} 这类位置名，改个顺序就全错。
+         ============================================================ -->
+    <select id="findByCondition" resultMap="employeeMap">
+        SELECT <include refid="withDeptColumns"/>
+        FROM employee e
+        LEFT JOIN dept d ON e.dept_id = d.id
+        <!-- ============================================================
+             ★ TODO-5 ★（选做 · 对应大纲「参数的传递方式」）动态 SQL
+             ============================================================
+             目标是「一个方法应对多种查询」：条件传了才拼进 WHERE，
+             没传就不拼。用 <where> + <if> 写两个判断：
+
+               · deptId 不为 null      → 拼 AND e.dept_id = #{deptId}
+               · gender 不为 null 且不为空串 → 拼 AND e.gender = #{gender}
+
+             为什么 <gender 不为空串> 这半句不能省：
+               只判 null 的话，页面传来空串 "" 会拼出 AND gender = ''，
+               结果是 0 条 —— 页面看起来"没数据"，实际是条件写错了。
+
+             为什么用 <where> 而不是手写 WHERE 1=1：
+               <where> 会自动吃掉"第一个条件前面多出来的 AND"，
+               两个条件都不传时连 WHERE 都不出现。手写 1=1 也能跑，
+               但不如它干净、也不是标准写法。
+
+             验收：EmployeeMapperTest 里 findByCondition 的 4 条全绿。
+             ============================================================ -->
+        <where>
+            <if test="deptId != null">
+                AND e.dept_id = #{deptId}
+            </if>
+            <if test="gender != null and gender != ''">
+                AND e.gender = #{gender}
+            </if>
+        </where>
+        ORDER BY e.id
+    </select>
+
+    <!-- ============================================================
+         新增：useGeneratedKeys + keyProperty
+         ============================================================
+         这两行让 MyBatis 把数据库生成的自增主键**回填到入参对象**上：
+             int rows = mapper.insert(e);
+             System.out.println(e.getId());   // 已经是最新主键，不用再查一次
+         这是大纲"扩展知识点：获取主键值"的标准做法。
+         （不用加 parameterType 也行，MyBatis 能推断，写上是便于阅读）
+         ============================================================ -->
+    <!-- ============================================================
+         ★ TODO-3 ★  增、改：insert 与 update
+         ============================================================
+         要写两条：
+           ① INSERT INTO employee(三个列) VALUES (三个 #{属性})
+              —— 列名是数据库的，#{...} 里是 Employee 的属性名，别混；
+           ② UPDATE employee SET 三个列 = 三个 #{属性} WHERE id = #{id}
+              —— 忘了 WHERE 会把整张表改掉，写完先读一遍。
+
+         ⚠️ insert 还有一件**拓展**要做（大纲「扩展知识点：获取主键值」）：
+            给它加上 useGeneratedKeys="true" keyProperty="id" 两个属性，
+            让数据库生成的自增主键回填到入参对象上。
+            验收：TestMyBatis 第 ④ 段打印的"回填的主键"不是 null。
+            只加 useGeneratedKeys 不加 keyProperty，照样是 null —— 两个要成对。
+         ============================================================ -->
+    <insert id="insert" parameterType="Employee" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO employee (name, gender, dept_id)
+        VALUES (#{name}, #{gender}, #{deptId})
+    </insert>
+
+    <update id="update" parameterType="Employee">
+        UPDATE employee SET name = #{name}, gender = #{gender}, dept_id = #{deptId}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 参数是单个基本类型时，#{id} 里的名字可以随便写（MyBatis 只有一个值），
+         但写成与接口一致的 id 最清楚 -->
+    <delete id="deleteById" parameterType="int">
+        DELETE FROM employee WHERE id = #{id}
+    </delete>
+
+</mapper>

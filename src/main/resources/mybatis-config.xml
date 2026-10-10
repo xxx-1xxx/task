@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+    <!-- ============================================================
+         ① 外部属性：把连接串/账号/密码从本文件里挪出去
+         ============================================================
+         好处：换库、改密码只动 jdbc.properties 一处；本文件不含机密，
+               可以放心提交进版本库。
+         （实验指导书把连接串直接写在下面的 <dataSource> 里，两种写法都能跑。
+           本工程用外置版，因为 P3 已经把 jdbc.properties 备好了 ——
+           到 P5 交给 Spring 时，不需要再搬一次。）
+         ============================================================ -->
+    <properties resource="jdbc.properties"/>
+
+    <settings>
+        <!-- 下划线列名自动映射到驼峰属性名（dept_id → deptId）。
+             有了它，单纯查表用 resultType 就够，不必手写 resultMap。
+             ⚠️ 但**关联查询仍需手写 resultMap**（association 不是列名映射），
+                见 EmployeeMapper.xml 的 employeeMap。 -->
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+
+        <!-- 让 MyBatis 通过 SLF4J 出日志，SQL 会打到控制台和 logs/ 下。
+             调 SQL 时最有用的一条开关：能看到真正执行的语句和参数。 -->
+        <setting name="logImpl" value="SLF4J"/>
+    </settings>
+
+    <!-- ② 类型别名：映射文件里 resultType 可以简写为 Employee 而不写全限定名 -->
+    <typeAliases>
+        <package name="com.zjtec.admin.entity"/>
+    </typeAliases>
+
+    <!-- ============================================================
+         ③ 环境：P4 阶段，数据源由 MyBatis 自己管
+         ============================================================
+         ⚠️⚠️ 到 P5（SSM 整合）时，这一段 <environments> 必须**整段删掉**，
+              改由 Spring 的 <bean id="dataSource"> 接管。
+
+         为什么必须删（⚠️ 这一条容易讲错，按实测口径说）：
+           Spring 的 SqlSessionFactoryBean 会用它自己的 dataSource **覆盖**掉
+           <environments> —— 所以走 Spring 那条路其实**不受影响**，看不出异常。
+           真正出事的是"不经过 Spring 的旧写法"（比如本工程 P4 那个 EmployeeServlet）：
+           它会照这里**另建一个连接池**，于是应用里同时活着两个池。后果很难查：
+             · 改 jdbc.properties 的密码/库名，这条老路不生效；
+             · 两个池各自连接、连接数翻倍、旧的没人关；
+             · 本机正常、换台机器"数据对不上"——因为两条路读的不是同一个库；
+             · 那个池不在 Spring 事务管理范围内，事务静默失效；
+             · 而且全程不报错。
+           删干净之后，旧写法会在下一次查询时立刻报错 —— 这才是想要的反馈：
+           把"隐形"变成"看得见"。（完整说明见实验指导书 实验五 步骤 1⑤）
+         ============================================================ -->
+    <environments default="development">
+        <environment id="development">
+            <!-- JDBC：由 MyBatis 自己提交/回滚事务（openSession(true) 即自动提交） -->
+            <transactionManager type="JDBC"/>
+            <!-- POOLED：MyBatis 自带的连接池 -->
+            <!-- ============================================================
+                 ★ TODO-1 ★  数据源的四个要素 —— 本实验第一件要填的事
+                 ============================================================
+                 填什么？不要猜。打开 src/main/resources/jdbc.properties，
+                 里面已经写好了 4 个键，用 ${键名} 引过来即可：
+
+                     value="${jdbc.driver}"     驱动类名
+                     value="${jdbc.url}"        连接串
+                     value="${jdbc.username}"   账号
+                     value="${jdbc.password}"   密码
+
+                 ⚠️ 填之前先做一件事：把 jdbc.properties 里的
+                    jdbc.password=你的密码   改成你本机 MySQL 的真实密码。
+                    只填这里、不改那个文件，一样连不上。
+
+                 填错的典型报错：
+                   · 驱动写成 com.mysql.jdbc.Driver   → ClassNotFoundException
+                   · url 里漏了 serverTimezone        → 时区报错
+                   · properties 里密码还是占位符       → Access denied
+                 ============================================================ -->
+            <dataSource type="POOLED">
+                <property name="driver"   value="${jdbc.driver}"/>
+                <property name="url"      value="${jdbc.url}"/>
+                <property name="username" value="${jdbc.username}"/>
+                <property name="password" value="${jdbc.password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <!-- ④ 映射文件位置：路径必须是源码里的包路径（不是全限定名） -->
+    <mappers>
+        <mapper resource="com/zjtec/admin/mapper/EmployeeMapper.xml"/>
+    </mappers>
+</configuration>
